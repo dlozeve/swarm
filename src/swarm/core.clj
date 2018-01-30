@@ -49,8 +49,8 @@
   (let [too-close (filter #(< (distance b %) 0.03) neighbours)
         close {:x (apply + (for [c too-close] (- (:x b) (:x c))))
                :y (apply + (for [c too-close] (- (:y b) (:y c))))}]
-    {:dx (/ (:x close) 2)
-     :dy (/ (:y close) 2)}))
+    {:dx (:x close)
+     :dy (:y close)}))
 
 (defn alignment [b neighbours]
   ;; Alignment rule: boids try to adopt the same velocity as their
@@ -73,17 +73,17 @@
 
 (defn update-boid [b bs goal]
   ;; Update a boid's position
-  (let [neighbours (get-neighbours 10 b bs)
+  (let [neighbours bs
         dist-update [(cohesion b neighbours)
                      (separation b neighbours)
                      (alignment b neighbours)
                      (goal-seeking b goal)]
-        dx-total (reduce #(+ %1 (:dx %2)) 0 dist-update)
-        dy-total (reduce #(+ %1 (:dy %2)) 0 dist-update)
+        dx-total (+ (:dx b) (reduce #(+ %1 (:dx %2)) 0 dist-update))
+        dy-total (+ (:dy b) (reduce #(+ %1 (:dy %2)) 0 dist-update))
         [dx-limited dy-limited] (limit-velocity dx-total dy-total)]
-    {:x (+ (:x b) (+ (:dx b) dx-total))
-     :y (+ (:y b) (+ (:dy b) dy-total))
-     :dx dx-total :dy dy-total}))
+    {:x (+ (:x b) dx-limited)
+     :y (+ (:y b) dy-limited)
+     :dx dx-limited :dy dy-limited}))
 
 (defn update-state [state]
   ;; Update the positions of all boids
@@ -106,9 +106,9 @@
 
 (q/defsketch swarm
   :title "The Swarm"
-  :size [700 700]
+  :size [800 800]
                                         ; setup function called only once, during sketch initialization.
-  :setup #(setup 100)
+  :setup #(setup 150)
                                         ; update-state is called on each iteration before draw-state.
   :update update-state
   :mouse-moved mouse-moved
