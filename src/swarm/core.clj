@@ -30,14 +30,26 @@
 
 (defn center-of-mass [boids]
   ;; Compute the center of mass of a set of boids
-  {:x (/ (apply + (for [b boids] (:x b))) (count boids))
-   :y (/ (apply + (for [b boids] (:y b))) (count boids))})
+  (if (= 0 (count boids))
+    {:x 0 :y 0}
+    {:x (float (/ (apply + (for [b boids] (:x b))) (count boids)))
+     :y (float (/ (apply + (for [b boids] (:y b))) (count boids)))}))
 
 (defn cohesion [b neighbours]
+  ;; Cohesion rule: boids try to move towards the center of mass of
+  ;; their neighbours
   (let [c (center-of-mass neighbours)]
     {:x (:x b) :y (:y b)
      :dx (+ (:dx b) (/ (- (:x c) (:x b)) 10))
      :dy (+ (:dy b) (/ (- (:y c) (:y b)) 10))}))
+
+(defn separation [b neighbours]
+  ;; Separation rule: boids move away from neighbours that are too
+  ;; close
+  (let [close (center-of-mass (filter #(< (distance b %) 2) neighbours))]
+    {:x (:x b) :y (:y b)
+     :dx (- (:dx b) (:x close))
+     :dy (- (:dy b) (:y close))}))
 
 (defn update-boid [b]
   ;; Update a boid's position
