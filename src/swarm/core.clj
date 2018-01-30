@@ -25,9 +25,9 @@
   (math/sqrt (+ (math/expt (- (:x b1) (:x b2)) 2)
                 (math/expt (- (:y b1) (:y b2)) 2))))
 
-(defn get-neighbours [k b bs]
-  ;; Get the k nearest neighbours of a boid
-  (vec (rest (take (inc k) (sort-by #(distance b %) bs)))))
+(defn get-neighbours [b bs]
+  (vec (filter #(< (distance b %) 0.5) bs))
+  )
 
 (defn center-of-mass [boids]
   ;; Compute the center of mass of a set of boids
@@ -73,7 +73,7 @@
 
 (defn update-boid [b bs goal]
   ;; Update a boid's position
-  (let [neighbours bs
+  (let [neighbours (get-neighbours b bs)
         dist-update [(cohesion b neighbours)
                      (separation b neighbours)
                      (alignment b neighbours)
