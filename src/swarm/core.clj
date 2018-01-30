@@ -12,7 +12,8 @@
 
 (defn generate-boids [n]
   ;; Generate n random boids
-  {:boids (vec (repeatedly n generate-boid))})
+  {:boids (vec (repeatedly n generate-boid))
+   :goal {:x 0 :y 0}})
 
 (defn setup [n]
   (q/frame-rate 30)
@@ -59,23 +60,42 @@
     {:dx (/ (apply + (for [b neighbours] (:dx b))) (* 8 (count neighbours)))
      :dy (/ (apply + (for [b neighbours] (:dy b))) (* 8 (count neighbours)))}))
 
-(defn update-boid [b bs]
+(defn goal-seeking [boid goal]
+  {:dx (/ (- (:x goal) (:x boid)) 100)
+   :dy (/ (- (:y goal) (:y boid)) 100)})
+
+(defn limit-velocity [dx dy]
+  (let [m (math/sqrt (+ (* dx dx) (* dy dy)))
+        max-v 0.015]
+    (if (> m max-v)
+      [(* max-v (/ dx m)) (* max-v (/ dy m))]
+      [dx dy])))
+
+(defn update-boid [b bs goal]
   ;; Update a boid's position
   (let [neighbours (get-neighbours 10 b bs)
         dist-update [(cohesion b neighbours)
                      (separation b neighbours)
                      (alignment b neighbours)
-                     ]
+                     (goal-seeking b goal)]
         dx-total (reduce #(+ %1 (:dx %2)) 0 dist-update)
-        dy-total (reduce #(+ %1 (:dy %2)) 0 dist-update)]
-    {:x (+ (:x b) dx-total)
-     :y (+ (:y b) dy-total)
+        dy-total (reduce #(+ %1 (:dy %2)) 0 dist-update)
+        [dx-limited dy-limited] (limit-velocity dx-total dy-total)]
+    {:x (+ (:x b) (+ (:dx b) dx-total))
+     :y (+ (:y b) (+ (:dy b) dy-total))
      :dx dx-total :dy dy-total}))
 
 (defn update-state [state]
   ;; Update the positions of all boids
   {:boids (vec (for [b (:boids state)]
-                  (update-boid b (:boids state))))})
+                 (update-boid b (:boids state) (:goal state))))
+   :goal (:goal state)})
+
+(defn mouse-moved [state event]
+  (let [x (- (* (/ (:x event) (q/width)) 2) 1)
+        y (- (* (/ (:y event) (q/height)) 2) 1)]
+    (assoc-in state [:goal]
+              {:x x :y y})))
 
 (defn draw-state [state]
   (q/background 255)
@@ -87,13 +107,14 @@
 (q/defsketch swarm
   :title "The Swarm"
   :size [700 700]
-  ; setup function called only once, during sketch initialization.
+                                        ; setup function called only once, during sketch initialization.
   :setup #(setup 100)
-  ; update-state is called on each iteration before draw-state.
+                                        ; update-state is called on each iteration before draw-state.
   :update update-state
+  :mouse-moved mouse-moved
   :draw draw-state
   :features [:no-bind-output :keep-on-top]
-  ; This sketch uses functional-mode middleware.
-  ; Check quil wiki for more info about middlewares and particularly
-  ; fun-mode.
+                                        ; This sketch uses functional-mode middleware.
+                                        ; Check quil wiki for more info about middlewares and particularly
+                                        ; fun-mode.
   :middleware [m/fun-mode])
