@@ -3,21 +3,21 @@
             [quil.middleware :as m]
             [clojure.math.numeric-tower :as math]))
 
-(defn generate-boid [w h]
+(defn generate-boid []
   ;; Generate a random boid
-  {:x (rand w)
-   :y (rand h)
+  {:x (/ (- (rand 2) 1) 10)
+   :y (/ (- (rand 2) 1) 10)
    :dx 0
    :dy 0})
 
-(defn generate-boids [n w h]
+(defn generate-boids [n]
   ;; Generate n random boids
-  {:boids (vec (repeatedly n #(generate-boid w h)))})
+  {:boids (vec (repeatedly n generate-boid))})
 
 (defn setup [n]
   (q/frame-rate 30)
   (q/color-mode :hsb)
-  (generate-boids n (q/width) (q/height)))
+  (generate-boids n))
 
 (defn distance [b1 b2]
   ;; Get the distance between two boids
@@ -26,11 +26,11 @@
 
 (defn get-neighbours [k b bs]
   ;; Get the k nearest neighbours of a boid
-  (rest (take (inc k) (sort-by #(distance b %) bs))))
+  (vec (rest (take (inc k) (sort-by #(distance b %) bs)))))
 
 (defn center-of-mass [boids]
   ;; Compute the center of mass of a set of boids
-  (if (= 0 (count boids))
+  (if (zero? (count boids))
     {:x 0 :y 0}
     {:x (float (/ (apply + (for [b boids] (:x b))) (count boids)))
      :y (float (/ (apply + (for [b boids] (:y b))) (count boids)))}))
@@ -39,48 +39,50 @@
   ;; Cohesion rule: boids try to move towards the center of mass of
   ;; their neighbours
   (let [c (center-of-mass neighbours)]
-    {:x (:x b) :y (:y b)
-     :dx (+ (:dx b) (/ (- (:x c) (:x b)) 10))
-     :dy (+ (:dy b) (/ (- (:y c) (:y b)) 10))}))
+    {:dx (/ (- (:x c) (:x b)) 100)
+     :dy (/ (- (:y c) (:y b)) 100)}))
 
 (defn separation [b neighbours]
   ;; Separation rule: boids move away from neighbours that are too
   ;; close
-  (let [close (center-of-mass (filter #(< (distance b %) 2) neighbours))]
-    {:x (:x b) :y (:y b)
-     :dx (- (:dx b) (:x close))
-     :dy (- (:dy b) (:y close))}))
-
-(defn average-dx-dy [boids]
-  ;; Compute the average move of a set of boids
-  (if (= 0 (count boids))
-    {:dx 0 :dy 0}
-    {:dx (float (/ (apply + (for [b boids] (:dx b))) (count boids)))
-     :dy (float (/ (apply + (for [b boids] (:dy b))) (count boids)))}))
+  (let [too-close (filter #(< (distance b %) 0.03) neighbours)
+        close {:x (apply + (for [c too-close] (- (:x b) (:x c))))
+               :y (apply + (for [c too-close] (- (:y b) (:y c))))}]
+    {:dx (/ (:x close) 2)
+     :dy (/ (:y close) 2)}))
 
 (defn alignment [b neighbours]
   ;; Alignment rule: boids try to adopt the same velocity as their
   ;; neighbours
-  (let [v (average-dx-dy neighbours)]
-    {:x (:x b) :y (:y b)
-     :dx (+ (:dx b) (/ (- (:dx v) (:x b)) 80))
-     :dy (+ (:dy b) (/ (- (:dy v) (:y b)) 80))}))
+  (if (zero? (count neighbours))
+    {:dx 0 :dy 0}
+    {:dx (/ (apply + (for [b neighbours] (:dx b))) (* 8 (count neighbours)))
+     :dy (/ (apply + (for [b neighbours] (:dy b))) (* 8 (count neighbours)))}))
 
-(defn update-boid [b]
+(defn update-boid [b bs]
   ;; Update a boid's position
-  {:x (+ (:x b) (:dx b))
-   :y (+ (:y b) (:dy b))
-   :dx (:dx b) :dy (:dy b)})
+  (let [neighbours (get-neighbours 10 b bs)
+        dist-update [(cohesion b neighbours)
+                     (separation b neighbours)
+                     (alignment b neighbours)
+                     ]
+        dx-total (reduce #(+ %1 (:dx %2)) 0 dist-update)
+        dy-total (reduce #(+ %1 (:dy %2)) 0 dist-update)]
+    {:x (+ (:x b) dx-total)
+     :y (+ (:y b) dy-total)
+     :dx dx-total :dy dy-total}))
 
 (defn update-state [state]
   ;; Update the positions of all boids
   {:boids (vec (for [b (:boids state)]
-                  (update-boid b)))})
+                  (update-boid b (:boids state))))})
 
 (defn draw-state [state]
   (q/background 255)
   (q/fill 0 0 0)
-  (doseq [b (:boids state)] (q/ellipse (:x b) (:y b) 5 5)))
+  (q/translate (/ (q/width) 2) (/ (q/height) 2))
+  (doseq [b (:boids state)]
+    (q/ellipse (* (q/width) (:x b)) (* (q/height) (:y b)) 5 5)))
 
 (q/defsketch swarm
   :title "The Swarm"
