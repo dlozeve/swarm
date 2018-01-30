@@ -51,6 +51,21 @@
      :dx (- (:dx b) (:x close))
      :dy (- (:dy b) (:y close))}))
 
+(defn average-dx-dy [boids]
+  ;; Compute the average move of a set of boids
+  (if (= 0 (count boids))
+    {:dx 0 :dy 0}
+    {:dx (float (/ (apply + (for [b boids] (:dx b))) (count boids)))
+     :dy (float (/ (apply + (for [b boids] (:dy b))) (count boids)))}))
+
+(defn alignment [b neighbours]
+  ;; Alignment rule: boids try to adopt the same velocity as their
+  ;; neighbours
+  (let [v (average-dx-dy neighbours)]
+    {:x (:x b) :y (:y b)
+     :dx (+ (:dx b) (/ (- (:dx v) (:x b)) 80))
+     :dy (+ (:dy b) (/ (- (:dy v) (:y b)) 80))}))
+
 (defn update-boid [b]
   ;; Update a boid's position
   {:x (+ (:x b) (:dx b))
