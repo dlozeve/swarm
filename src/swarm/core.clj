@@ -21,8 +21,8 @@
 
 (defn distance [b1 b2]
   ;; Get the distance between two boids
-  (Math/sqrt (+ (Math/pow (- (:x b1) (:x b2)) 2)
-                (Math/pow (- (:y b1) (:y b2)) 2))))
+  (q/sqrt (+ (q/sq (- (:x b1) (:x b2)))
+             (q/sq (- (:y b1) (:y b2))))))
 
 (defn get-neighbours [threshold b bs]
   (vec (filter #(< (distance b %) threshold) bs))
@@ -64,7 +64,7 @@
    :dy (/ (- (:y goal) (:y boid)) 100)})
 
 (defn limit-velocity [dx dy]
-  (let [m (Math/sqrt (+ (* dx dx) (* dy dy)))
+  (let [m (q/sqrt (+ (* dx dx) (* dy dy)))
         max-v 0.035]
     (if (> m max-v)
       [(* max-v (/ dx m)) (* max-v (/ dy m))]
