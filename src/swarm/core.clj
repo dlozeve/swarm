@@ -1,7 +1,6 @@
 (ns swarm.core
   (:require [quil.core :as q]
-            [quil.middleware :as m]
-            [clojure.math.numeric-tower :as math]))
+            [quil.middleware :as m]))
 
 (defn generate-boid []
   ;; Generate a random boid
@@ -22,8 +21,8 @@
 
 (defn distance [b1 b2]
   ;; Get the distance between two boids
-  (math/sqrt (+ (math/expt (- (:x b1) (:x b2)) 2)
-                (math/expt (- (:y b1) (:y b2)) 2))))
+  (Math/sqrt (+ (Math/pow (- (:x b1) (:x b2)) 2)
+                (Math/pow (- (:y b1) (:y b2)) 2))))
 
 (defn get-neighbours [threshold b bs]
   (vec (filter #(< (distance b %) threshold) bs))
@@ -65,7 +64,7 @@
    :dy (/ (- (:y goal) (:y boid)) 100)})
 
 (defn limit-velocity [dx dy]
-  (let [m (math/sqrt (+ (* dx dx) (* dy dy)))
+  (let [m (Math/sqrt (+ (* dx dx) (* dy dy)))
         max-v 0.035]
     (if (> m max-v)
       [(* max-v (/ dx m)) (* max-v (/ dy m))]
