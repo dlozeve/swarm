@@ -25,8 +25,8 @@
   (math/sqrt (+ (math/expt (- (:x b1) (:x b2)) 2)
                 (math/expt (- (:y b1) (:y b2)) 2))))
 
-(defn get-neighbours [b bs]
-  (vec (filter #(< (distance b %) 0.5) bs))
+(defn get-neighbours [threshold b bs]
+  (vec (filter #(< (distance b %) threshold) bs))
   )
 
 (defn center-of-mass [boids]
@@ -49,16 +49,16 @@
   (let [too-close (filter #(< (distance b %) 0.03) neighbours)
         close {:x (apply + (for [c too-close] (- (:x b) (:x c))))
                :y (apply + (for [c too-close] (- (:y b) (:y c))))}]
-    {:dx (:x close)
-     :dy (:y close)}))
+    {:dx (/ (:x close) 2)
+     :dy (/ (:y close) 2)}))
 
 (defn alignment [b neighbours]
   ;; Alignment rule: boids try to adopt the same velocity as their
   ;; neighbours
   (if (zero? (count neighbours))
     {:dx 0 :dy 0}
-    {:dx (/ (apply + (for [b neighbours] (:dx b))) (* 8 (count neighbours)))
-     :dy (/ (apply + (for [b neighbours] (:dy b))) (* 8 (count neighbours)))}))
+    {:dx (/ (apply + (for [b neighbours] (:dx b))) (* 10 (count neighbours)))
+     :dy (/ (apply + (for [b neighbours] (:dy b))) (* 10 (count neighbours)))}))
 
 (defn goal-seeking [boid goal]
   {:dx (/ (- (:x goal) (:x boid)) 100)
@@ -66,18 +66,31 @@
 
 (defn limit-velocity [dx dy]
   (let [m (math/sqrt (+ (* dx dx) (* dy dy)))
-        max-v 0.015]
+        max-v 0.035]
     (if (> m max-v)
       [(* max-v (/ dx m)) (* max-v (/ dy m))]
       [dx dy])))
 
+(defn bound-position [boid]
+  (let [dx (cond
+             (> (:x boid) 1) -0.025
+             (< (:x boid) -1) 0.025
+             :else 0)
+        dy (cond
+             (> (:y boid) 1) -0.025
+             (< (:y boid) -1) 0.025
+             :else 0)]
+    {:dx dx :dy dy}))
+
 (defn update-boid [b bs goal]
   ;; Update a boid's position
-  (let [neighbours (get-neighbours b bs)
+  (let [neighbours (get-neighbours 0.5 b bs)
         dist-update [(cohesion b neighbours)
                      (separation b neighbours)
-                     (alignment b neighbours)
-                     (goal-seeking b goal)]
+                     (alignment b (get-neighbours 0.2 b bs))
+                     (goal-seeking b goal)
+                     (bound-position b)
+                     ]
         dx-total (+ (:dx b) (reduce #(+ %1 (:dx %2)) 0 dist-update))
         dy-total (+ (:dy b) (reduce #(+ %1 (:dy %2)) 0 dist-update))
         [dx-limited dy-limited] (limit-velocity dx-total dy-total)]
@@ -108,7 +121,7 @@
   :title "The Swarm"
   :size [800 800]
                                         ; setup function called only once, during sketch initialization.
-  :setup #(setup 150)
+  :setup #(setup 200)
                                         ; update-state is called on each iteration before draw-state.
   :update update-state
   :mouse-moved mouse-moved
