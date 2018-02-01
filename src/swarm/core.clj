@@ -113,23 +113,22 @@
               {:x x :y y})))
 
 (defn draw-state [state]
-  (q/background 255)
-  (q/fill 0 0 0)
+  (q/background-float 220)
   (q/translate (/ (q/width) 2) (/ (q/height) 2))
   (doseq [b (:boids state)]
-    (q/ellipse (* (q/width) (:x b)) (* (q/height) (:y b)) 5 5)))
+    (let [disp-x (* (q/width) (:x b))
+          disp-y (* (q/height) (:y b))
+          dxdy-norm (q/sqrt (+ (q/sq (:dx b)) (q/sq (:dy b))))]
+      (q/fill 150 255 150)
+      (q/no-stroke)
+      (q/ellipse disp-x disp-y 5 5))))
 
 (q/defsketch swarm
   :title "swarm"
-  :size [800 800]
-                                        ; setup function called only once, during sketch initialization.
+  :size [1000 1000]
   :setup #(setup 200)
-                                        ; update-state is called on each iteration before draw-state.
   :update update-state
   :mouse-moved mouse-moved
   :draw draw-state
   :features [:no-bind-output :keep-on-top]
-                                        ; This sketch uses functional-mode middleware.
-                                        ; Check quil wiki for more info about middlewares and particularly
-                                        ; fun-mode.
   :middleware [m/fun-mode])
